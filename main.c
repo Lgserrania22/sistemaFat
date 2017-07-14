@@ -91,7 +91,7 @@ ptnoArq insereArquivo(ptnoArq arquivo, char *texto, char *nome){
     if(!arquivo){
         arquivo = (ptnoArq *)malloc(sizeof(noArq));
         arquivo->caracteres = tamanhoArquivo(texto);
-        arquivo->nome = (*nome);
+        strcpy(nome,arquivo->nome);
         arquivo->prox = NULL;
         arquivo->setores = NULL;
         return arquivo;
@@ -103,7 +103,7 @@ ptnoArq insereArquivo(ptnoArq arquivo, char *texto, char *nome){
         }
         if(!Q){
             Q = (ptnoArq *)malloc(sizeof(noArq));
-            Q->nome = nome;
+            strcpy(nome,Q->nome);;
             Q->caracteres = tamanhoArquivo(texto);
             Q->prox = NULL;
             Q->setores = NULL;
@@ -112,7 +112,7 @@ ptnoArq insereArquivo(ptnoArq arquivo, char *texto, char *nome){
             aux = (ptnoArq *)malloc(sizeof(noArq));
             P->prox = aux;
             aux->prox = Q;
-            aux->nome = nome;
+            strcpy(nome,aux->nome);;
             aux->caracteres = tamanhoArquivo(texto);
             aux->setores = NULL;
             return aux;
@@ -122,12 +122,12 @@ ptnoArq insereArquivo(ptnoArq arquivo, char *texto, char *nome){
 
 /*------------------------------------*/
 /*Insere setor na lista de setores ocupados pelo arquivo*/
-void insereSetor(ptnoSet setores, int inicio, int fim){
-    if(!setores){
-        setores = (ptnoSet *)malloc(sizeof(noSet));
-        setores->inicio = inicio;
-        setores->fim = fim;
-        setores->prox = NULL;
+void insereSetor(ptnoSet *setores, int inicio, int fim){
+    if(!(*setores)){
+        (*setores) = (ptnoSet *)malloc(sizeof(noSet));
+        (*setores)->inicio = inicio;
+        (*setores)->fim = fim;
+        (*setores)->prox = NULL;
     }else{
         ptnoSet aux, P, Q = setores;
         while(Q && inicio > Q->inicio){
@@ -141,32 +141,54 @@ void insereSetor(ptnoSet setores, int inicio, int fim){
             Q->prox = NULL;
         }else{
             aux = (ptnoSet *)malloc(sizeof(noSet));
-            printf("Memória cheia!");
             P->prox = aux;
             aux->prox = Q;
             aux->inicio = inicio;
-            aux->fim = fim;
-            
+            aux->fim = fim;           
         }
     }
 }
 
 /*------------------------------------*/
-
+/*Função para preencher os setores na memória*/
+void preencheSetor(int inicio, int fim, char *texto,memoria *Memo, int tamArquivo, int *caracteresInseridos){
+    int setorAtual = inicio;
+    while(setorAtual <= fim){
+       int contador = 0;
+       while(contador < 3 && *caracteresInseridos < tamArquivo){
+           (*Memo)[setorAtual][contador] = texto[(*caracteresInseridos)];
+           contador++;
+           (*caracteresInseridos)++;
+       }
+       setorAtual++;
+    }
+}
 /*Função para gravar arquivo*/
-int gravaArquivo(ptnoArq arquivo, ptnoSet Area, char *texto, char *nome){
-    int tamArquivo = tamanhoArquivo(texto);
-    if(tamArquivo > verificaAreaLivre(Area)) return 0;
+int gravaArquivo(ptnoArq arquivo, ptnoSet Area, char *texto, char *nome, memoria *Memo){
+    int tamArquivo = tamanhoArquivo(texto);       
+    int caracteresInseridos = 0;
+    if(tamArquivo > verificaAreaLivre(Area)) return FALSE;
     ptnoArq P = insereArquivo(arquivo, texto, nome);
     int numeroSetores = 0;
     if(tamArquivo % 3) numeroSetores = tamArquivo/3 + 1;
     else numeroSetores = tamArquivo/3;
-    while(numeroSetores){
-        if(numeroSetores > Area->fim - Area->inicio){
-            P->setores = (ptnoSet *)malloc(sizeof(noSet));
-            
+    while(numeroSetores){              
+        if(numeroSetores > Area->fim - Area->inicio){      
+            insereSetor(&P->setores, Area->inicio, Area->fim);
+            preencheSetor(Area->inicio, Area->fim, texto, Memo, tamArquivo, &caracteresInseridos);
+            mostraMemoria((*Memo));
+            numeroSetores = numeroSetores - Area->fim - Area->inicio;
+            Area = Area->prox;
+        }else{
+            int setorFim = Area->inicio + numeroSetores - 1;
+            insereSetor(&P->setores, Area->inicio, setorFim);
+            preencheSetor(Area->inicio, setorFim, texto, Memo, tamArquivo, &caracteresInseridos);
+            Area->inicio = setorFim;
+            numeroSetores = 0;
+            mostraMemoria((*Memo));
         }
     }
+    return 0;
     
 }
 
@@ -198,6 +220,7 @@ int main(void) {
     ptnoSet Area, set;
     ptnoArq Arq, ant;
     memoria Memo;
+    int teste;
     char com[3];
     char nome[13];
     char texto[TAM_MEMORIA * TAM_GRANULO];
@@ -211,7 +234,7 @@ int main(void) {
                 scanf("%s %s", nome, texto);
                 printf("nome = %s\n", nome);
                 printf("texto = %s\n", texto);
-                tamanhoArquivo(&texto);
+                teste = gravaArquivo(Arq, Area, texto, nome, &Memo);
                 /*
                  * Implementar as chamadas das funcoes pra GRAVAR arquivo
                  */
