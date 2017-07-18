@@ -73,7 +73,7 @@ int verificaAreaLivre(ptnoSet Area){
     int espacoLivre = 0;
     ptnoSet aux = Area;
     while(aux){
-        espacoLivre += aux->fim - aux->inicio;
+        espacoLivre += aux->fim - aux->inicio + 1;
         aux = aux->prox;
     }
     return espacoLivre;
@@ -87,32 +87,42 @@ int tamanhoArquivo(char *texto){
 }
 
 /*Insere arquivo na lista de arquivos e retorna o ponteiro que aponta para ele*/
-ptnoArq insereArquivo(ptnoArq arquivo, char *texto, char *nome){
-    if(!arquivo){
-        arquivo = (ptnoArq *)malloc(sizeof(noArq));
-        arquivo->caracteres = tamanhoArquivo(texto);
-        strcpy(nome,arquivo->nome);
-        arquivo->prox = NULL;
-        arquivo->setores = NULL;
-        return arquivo;
+ptnoArq insereArquivo(ptnoArq *arquivo, char *texto, char *nome){
+    if(!(*arquivo)){
+        (*arquivo) = (ptnoArq *)malloc(sizeof(noArq));
+        (*arquivo)->caracteres = tamanhoArquivo(texto);
+        strcpy((*arquivo)->nome, nome);
+        (*arquivo)->prox = NULL;
+        (*arquivo)->setores = NULL;
+        return (*arquivo);
     }else{
-        ptnoArq aux, P, Q = arquivo;
-        while(Q && nome > Q->nome){
+        ptnoArq aux, P = NULL, Q = (*arquivo);
+        while(Q && strcmp(nome, Q->nome) > 0){
             P = Q;
             Q = Q->prox;
         }
-        if(!Q){
+        if(!P){
+            P = (ptnoArq *)malloc(sizeof(noArq));
+            strcpy(P->nome, nome);
+            P->caracteres = tamanhoArquivo(texto);
+            P->prox = NULL;
+            P->setores = NULL;
+            P->prox = Q;
+            (*arquivo) = P;
+            return P;
+        }else if(!Q){
             Q = (ptnoArq *)malloc(sizeof(noArq));
-            strcpy(nome,Q->nome);;
+            strcpy(Q->nome, nome);
             Q->caracteres = tamanhoArquivo(texto);
             Q->prox = NULL;
             Q->setores = NULL;
+            P->prox = Q;
             return Q;
         }else{
             aux = (ptnoArq *)malloc(sizeof(noArq));
             P->prox = aux;
             aux->prox = Q;
-            strcpy(nome,aux->nome);;
+            strcpy(aux->nome, nome);;
             aux->caracteres = tamanhoArquivo(texto);
             aux->setores = NULL;
             return aux;
@@ -164,23 +174,23 @@ void preencheSetor(int inicio, int fim, char *texto,memoria *Memo, int tamArquiv
     }
 }
 /*Função para gravar arquivo*/
-int gravaArquivo(ptnoArq arquivo, ptnoSet Area, char *texto, char *nome, memoria *Memo){
+int gravaArquivo(ptnoArq *arquivo, ptnoSet Area, char *texto, char *nome, memoria *Memo){
     int tamArquivo = tamanhoArquivo(texto);       
     int caracteresInseridos = 0;
-    if(tamArquivo > verificaAreaLivre(Area)) return FALSE;
-    ptnoArq P = insereArquivo(arquivo, texto, nome);
+    if(tamArquivo >= verificaAreaLivre(Area) * 3) return FALSE;
+    ptnoArq P = insereArquivo(&(*arquivo), texto, nome);
     int numeroSetores = 0;
     if(tamArquivo % 3) numeroSetores = tamArquivo/3 + 1;
     else numeroSetores = tamArquivo/3;
     while(numeroSetores){              
-        if(numeroSetores > Area->fim - Area->inicio){      
+        if(numeroSetores > Area->fim - Area->inicio + 1){      
             insereSetor(&P->setores, Area->inicio, Area->fim);
             preencheSetor(Area->inicio, Area->fim, texto, Memo, tamArquivo, &caracteresInseridos);
             mostraMemoria((*Memo));
             numeroSetores = numeroSetores - Area->fim - Area->inicio;
             Area = Area->prox;
         }else{
-            int setorFim = Area->inicio + numeroSetores - 1;
+            int setorFim = Area->inicio + numeroSetores;
             insereSetor(&P->setores, Area->inicio, setorFim);
             preencheSetor(Area->inicio, setorFim, texto, Memo, tamArquivo, &caracteresInseridos);
             Area->inicio = setorFim;
@@ -234,7 +244,12 @@ int main(void) {
                 scanf("%s %s", nome, texto);
                 printf("nome = %s\n", nome);
                 printf("texto = %s\n", texto);
-                teste = gravaArquivo(Arq, Area, texto, nome, &Memo);
+                teste = gravaArquivo(&Arq, Area, texto, nome, &Memo);
+                if(!teste){
+                    puts("Deu ruim!");
+                }else{
+                    puts("Deu bom!");
+                }
                 /*
                  * Implementar as chamadas das funcoes pra GRAVAR arquivo
                  */
