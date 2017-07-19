@@ -139,7 +139,7 @@ void insereSetor(ptnoSet *setores, int inicio, int fim){
         (*setores)->fim = fim;
         (*setores)->prox = NULL;
     }else{
-        ptnoSet aux, P, Q = setores;
+        ptnoSet aux, P = NULL, Q = (*setores);
         while(Q && inicio > Q->inicio){
             P = Q;
             Q = Q->prox;
@@ -151,11 +151,18 @@ void insereSetor(ptnoSet *setores, int inicio, int fim){
             Q->prox = NULL;
         }else{
             aux = (ptnoSet *)malloc(sizeof(noSet));
-            P->prox = aux;
-            aux->prox = Q;
-            aux->inicio = inicio;
-            aux->fim = fim;           
-        }
+            if(!P){
+                aux->prox = Q;
+                aux->inicio = inicio;
+                aux->fim = fim;
+                (*setores) = aux;
+            }else{
+                P->prox = aux;
+                    aux->prox = Q;
+                    aux->inicio = inicio;
+                    aux->fim = fim;           
+                }
+            }           
     }
 }
 
@@ -171,6 +178,15 @@ void preencheSetor(int inicio, int fim, char *texto,memoria *Memo, int tamArquiv
            (*caracteresInseridos)++;
        }
        setorAtual++;
+    }
+}
+
+void liberaMemoria(memoria *Memo, int inicio, int fim){
+    int i;
+    for(i = inicio; i <= fim; i++){
+        (*Memo)[i][0] = ' ';
+        (*Memo)[i][1] = ' ';
+        (*Memo)[i][2] = ' ';
     }
 }
 /*Função para gravar arquivo*/
@@ -190,18 +206,56 @@ int gravaArquivo(ptnoArq *arquivo, ptnoSet Area, char *texto, char *nome, memori
             numeroSetores = numeroSetores - Area->fim - Area->inicio;
             Area = Area->prox;
         }else{
-            int setorFim = Area->inicio + numeroSetores;
+            int setorFim = Area->inicio + numeroSetores - 1;
             insereSetor(&P->setores, Area->inicio, setorFim);
             preencheSetor(Area->inicio, setorFim, texto, Memo, tamArquivo, &caracteresInseridos);
-            Area->inicio = setorFim;
+            Area->inicio = setorFim + 1;
             numeroSetores = 0;
             mostraMemoria((*Memo));
         }
     }
-    return 0;
-    
+    return TRUE;
 }
 
+void desalocaSetores(ptnoArq arquivo, ptnoSet *Area, memoria *Memo){
+    ptnoSet P = arquivo->setores, aux;
+    if(!P){
+        return TRUE;
+    }
+    while(P){
+        insereSetor(Area,P->inicio,P->fim);
+        liberaMemoria(Memo, P->inicio, P->fim);
+        return TRUE;
+    }
+}
+
+int removeArquivo(ptnoArq *arquivo, char *nome, ptnoSet *Area, memoria *Memo){
+    if(!(*arquivo)){
+        return FALSE;
+    }
+    ptnoArq P = NULL, Q = (*arquivo), aux;
+    while(Q && strcmp(nome, Q->nome) > 0){
+        P = Q;
+        Q = Q->prox;
+    }
+    if(!Q){
+        return FALSE;
+    }
+    aux = Q;
+    Q = Q->prox;
+    if(P){
+        P->prox = Q;
+    }else{
+        (*arquivo) = Q;
+    }
+    desalocaSetores(aux, Area, Memo);
+    free(aux);
+    return TRUE;
+}
+
+int excluiArquivo(){
+    
+}
 
 /*--------------------------*/
 /*
@@ -257,9 +311,7 @@ int main(void) {
             case 'D':
                 scanf("%s", nome);
                 printf("nome = %s\n", nome);
-                /*
-                 * Implementar as chamadas das funcoes pra DELETAR arquivo
-                 */
+                removeArquivo(&Arq, nome, &Area, &Memo);
                 break;
             case 'A':
                 scanf("%s", nome);
