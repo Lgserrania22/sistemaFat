@@ -68,10 +68,10 @@ void inicia(ptnoSet *Area, ptnoArq *Arq, memoria Memo) {
  * Implementar as rotinas para simulacao da FAT
  *---------------------------------------------*/
 /*Função para buscar setor livre*/
-int verificaAreaLivre(ptnoSet Area){
-    if(!Area) return 0;
+int verificaAreaLivre(ptnoSet *Area){
+    if(!(*Area)) return 0;
     int espacoLivre = 0;
-    ptnoSet aux = Area;
+    ptnoSet aux = (*Area);
     while(aux){
         espacoLivre += aux->fim - aux->inicio + 1;
         aux = aux->prox;
@@ -149,6 +149,7 @@ void insereSetor(ptnoSet *setores, int inicio, int fim){
             Q->inicio = inicio;
             Q->fim = fim;
             Q->prox = NULL;
+            P->prox = Q;
         }else{
             aux = (ptnoSet *)malloc(sizeof(noSet));
             if(!P){
@@ -190,7 +191,7 @@ void liberaMemoria(memoria *Memo, int inicio, int fim){
     }
 }
 /*Função para gravar arquivo*/
-int gravaArquivo(ptnoArq *arquivo, ptnoSet Area, char *texto, char *nome, memoria *Memo){
+int gravaArquivo(ptnoArq *arquivo, ptnoSet *Area, char *texto, char *nome, memoria *Memo){
     int tamArquivo = tamanhoArquivo(texto);       
     int caracteresInseridos = 0;
     if(tamArquivo >= verificaAreaLivre(Area) * 3) return FALSE;
@@ -199,26 +200,25 @@ int gravaArquivo(ptnoArq *arquivo, ptnoSet Area, char *texto, char *nome, memori
     if(tamArquivo % 3) numeroSetores = tamArquivo/3 + 1;
     else numeroSetores = tamArquivo/3;
     while(numeroSetores){              
-        if(numeroSetores > Area->fim - Area->inicio + 1){      
-            insereSetor(&P->setores, Area->inicio, Area->fim);
-            preencheSetor(Area->inicio, Area->fim, texto, Memo, tamArquivo, &caracteresInseridos);
-            mostraMemoria((*Memo));
-            numeroSetores = numeroSetores - Area->fim - Area->inicio;
-            Area = Area->prox;
+        if(numeroSetores >= (*Area)->fim - (*Area)->inicio){      
+            insereSetor(&P->setores, (*Area)->inicio, (*Area)->fim);
+            preencheSetor((*Area)->inicio, (*Area)->fim, texto, Memo, tamArquivo, &caracteresInseridos);
+            numeroSetores = numeroSetores - (*Area)->fim - (*Area)->inicio - 1;
+            (*Area) = (*Area)->prox;
         }else{
-            int setorFim = Area->inicio + numeroSetores - 1;
-            insereSetor(&P->setores, Area->inicio, setorFim);
-            preencheSetor(Area->inicio, setorFim, texto, Memo, tamArquivo, &caracteresInseridos);
-            Area->inicio = setorFim + 1;
+            int setorFim = (*Area)->inicio + numeroSetores - 1;
+            insereSetor(&P->setores, (*Area)->inicio, setorFim);
+            preencheSetor((*Area)->inicio, setorFim, texto, Memo, tamArquivo, &caracteresInseridos);
+            (*Area)->inicio = setorFim + 1;
             numeroSetores = 0;
-            mostraMemoria((*Memo));
         }
     }
+    mostraMemoria((*Memo));
     return TRUE;
 }
 
 void desalocaSetores(ptnoArq arquivo, ptnoSet *Area, memoria *Memo){
-    ptnoSet P = arquivo->setores, aux;
+    ptnoSet P = arquivo->setores;
     if(!P){
         return TRUE;
     }
@@ -298,7 +298,7 @@ int main(void) {
                 scanf("%s %s", nome, texto);
                 printf("nome = %s\n", nome);
                 printf("texto = %s\n", texto);
-                teste = gravaArquivo(&Arq, Area, texto, nome, &Memo);
+                teste = gravaArquivo(&Arq, &Area, texto, nome, &Memo);
                 if(!teste){
                     puts("Deu ruim!");
                 }else{
