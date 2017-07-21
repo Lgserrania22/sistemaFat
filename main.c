@@ -225,8 +225,9 @@ void desalocaSetores(ptnoArq arquivo, ptnoSet *Area, memoria *Memo){
     while(P){
         insereSetor(Area,P->inicio,P->fim);
         liberaMemoria(Memo, P->inicio, P->fim);
-        return TRUE;
+        P = P->prox;
     }
+    return TRUE;
 }
 
 int removeArquivo(ptnoArq *arquivo, char *nome, ptnoSet *Area, memoria *Memo){
