@@ -145,11 +145,15 @@ void insereSetor(ptnoSet *setores, int inicio, int fim){
             Q = Q->prox;
         }
         if(!Q){
-            Q = (ptnoSet *)malloc(sizeof(noSet));
-            Q->inicio = inicio;
-            Q->fim = fim;
-            Q->prox = NULL;
-            P->prox = Q;
+            if(P->fim == inicio){
+                P->fim = inicio;
+            }else{
+                Q = (ptnoSet *)malloc(sizeof(noSet));
+                Q->inicio = inicio;
+                Q->fim = fim;
+                Q->prox = NULL;
+                P->prox = Q;
+            }
         }else{            
             if(!P){
                 if(fim + 1 == Q->inicio){
