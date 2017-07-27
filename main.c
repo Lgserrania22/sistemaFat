@@ -68,95 +68,98 @@ void inicia(ptnoSet *Area, ptnoArq *Arq, memoria Memo) {
  * Implementar as rotinas para simulacao da FAT
  *---------------------------------------------*/
 /*Função para buscar setor livre*/
-int verificaAreaLivre(ptnoSet *Area){
-    if(!(*Area)) return 0;
+int verificaAreaLivre(ptnoSet *Area, int tamArquivo){
+    if(!(*Area)) return FALSE; //Caso não exista Area, retorna falso
     int espacoLivre = 0;
-    ptnoSet aux = (*Area);
-    while(aux){
-        espacoLivre += aux->fim - aux->inicio + 1;
-        aux = aux->prox;
+    ptnoSet aux = (*Area); //Variável que irá percorrer a lista de area livre
+    while(espacoLivre < tamArquivo && aux){
+        espacoLivre += (aux->fim - aux->inicio + 1) * 3;//A cada nó, espacoLivre recebe o espaço livre na memória. O +1 é para contar o inicio. O *3 é pra contar os 3 espaços por setor
+        aux = aux->prox;//aux recebe o próximo nó
     }
-    return espacoLivre;
+    if(espacoLivre >= tamArquivo){ //Se o espaço livre for maior ou igual ao tamanho do arquivo
+        return TRUE; 
+    }else{
+        return FALSE;
+    }
 }
 /*--------------------------------*/
-/*Verifica tamanho do texto do arquivo*/
 
+/*Verifica tamanho do texto do arquivo*/
 int tamanhoArquivo(char *texto){
     int tamanho = strlen(texto);
     return tamanho;
 }
 
 /*Insere arquivo na lista de arquivos e retorna o ponteiro que aponta para ele*/
-ptnoArq insereArquivo(ptnoArq *arquivo, char *texto, char *nome){
-    if(!(*arquivo)){
-        (*arquivo) = (ptnoArq *)malloc(sizeof(noArq));
-        (*arquivo)->caracteres = tamanhoArquivo(texto);
-        strcpy((*arquivo)->nome, nome);
-        (*arquivo)->prox = NULL;
-        (*arquivo)->setores = NULL;
-        return (*arquivo);
-    }else{
+ptnoArq alocaArquivo(ptnoArq *arquivo, char *texto, char *nome){
+    if(!(*arquivo)){ //Se a lista de arquivos estiver vazia
+        (*arquivo) = (ptnoArq *)malloc(sizeof(noArq)); //Aloca espaço para a cabeça da lista
+        (*arquivo)->caracteres = tamanhoArquivo(texto); //Recebe o número de caracteres
+        strcpy((*arquivo)->nome, nome); //Recebe o nome do arquivo
+        (*arquivo)->prox = NULL; //Prox é nulo pois é o primeiro arquivo
+        (*arquivo)->setores = NULL; //Setores serão inseridos posteriormente
+        return (*arquivo); //Retorna o nó que foi inserido
+    }else{//Caso já exista um arquivo
         ptnoArq aux, P = NULL, Q = (*arquivo);
-        while(Q && strcmp(nome, Q->nome) > 0){
+        while(Q && strcmp(nome, Q->nome) > 0){ //Percorre a lista enquanto o nome dado for maior que Q->nome
             P = Q;
             Q = Q->prox;
         }
-        if(!P){
-            P = (ptnoArq *)malloc(sizeof(noArq));
-            strcpy(P->nome, nome);
-            P->caracteres = tamanhoArquivo(texto);
-            P->prox = NULL;
-            P->setores = NULL;
-            P->prox = Q;
-            (*arquivo) = P;
-            return P;
-        }else if(!Q){
-            Q = (ptnoArq *)malloc(sizeof(noArq));
-            strcpy(Q->nome, nome);
-            Q->caracteres = tamanhoArquivo(texto);
-            Q->prox = NULL;
-            Q->setores = NULL;
-            P->prox = Q;
-            return Q;
-        }else{
-            aux = (ptnoArq *)malloc(sizeof(noArq));
-            P->prox = aux;
-            aux->prox = Q;
-            strcpy(aux->nome, nome);;
-            aux->caracteres = tamanhoArquivo(texto);
-            aux->setores = NULL;
-            return aux;
+        if(!P){ //Se P for nulo, significa que o arquivo será inserido no começo da lista
+            P = (ptnoArq *)malloc(sizeof(noArq)); //Aloca memória pro arquivo
+            strcpy(P->nome, nome); //Insere o nome
+            P->caracteres = tamanhoArquivo(texto); //Insere o número de caracteres
+            P->setores = NULL; //Setores serão inseridos posteriormente
+            P->prox = Q; //P->prox aponta pro Q
+            (*arquivo) = P; //P passa a ser a cabeça da lista
+            return P; //Retorna o nó inserido
+        }else if(!Q){ //Se não existir Q, significa que será inserido no final da lista
+            Q = (ptnoArq *)malloc(sizeof(noArq)); //Aloca a memória
+            strcpy(Q->nome, nome); //Insere o nome
+            Q->caracteres = tamanhoArquivo(texto); //Insere o número de caracteres
+            Q->prox = NULL; //Não existe próximo, pois está no final
+            Q->setores = NULL; //Setores serão inseridos posteriormente
+            P->prox = Q; //P->prox aponta para Q
+            return Q; //Retorna o nó inserido
+        }else{ //Senão, será inserido no meio da lista
+            aux = (ptnoArq *)malloc(sizeof(noArq)); //Aloca memória
+            P->prox = aux; //Aux fica depois de P
+            aux->prox = Q; //E antes de Q
+            strcpy(aux->nome, nome);; //Insere nome
+            aux->caracteres = tamanhoArquivo(texto); //Insere o número de caracteres
+            aux->setores = NULL; //Setores serão inseridos posteriormente
+            return aux; //Retorna o nó inserido
         }
     }
 }
 
 /*------------------------------------*/
 /*Insere setor na lista de setores ocupados pelo arquivo*/
-void insereSetor(ptnoSet *setores, int inicio, int fim){
-    if(!(*setores)){
-        (*setores) = (ptnoSet *)malloc(sizeof(noSet));
-        (*setores)->inicio = inicio;
-        (*setores)->fim = fim;
-        (*setores)->prox = NULL;
+void alocaSetor(ptnoSet *setores, int inicio, int fim){
+    if(!(*setores)){ //Se não existir nenhum setor
+        (*setores) = (ptnoSet *)malloc(sizeof(noSet)); //Aloca memória pra cabeça da lista
+        (*setores)->inicio = inicio; //Insere o inicio
+        (*setores)->fim = fim; //Insere o fim
+        (*setores)->prox = NULL; //Não tem próximo, pois é o primeiro elemento
     }else{
         ptnoSet aux, P = NULL, Q = (*setores);
-        while(Q && inicio > Q->inicio){
+        while(Q && inicio > Q->inicio){ //Enquanto existir Q e o inicio for maior do que Q->inicio, a lista é percorrida
             P = Q;
             Q = Q->prox;
         }
-        if(!Q){
-            if(P->fim == inicio){
-                P->fim = inicio;
-            }else{
-                Q = (ptnoSet *)malloc(sizeof(noSet));
-                Q->inicio = inicio;
-                Q->fim = fim;
-                Q->prox = NULL;
-                P->prox = Q;
+        if(!Q){ //Se no final não existir Q, significa que vai ser inserido no final da lista
+            if(P->fim == inicio){ //Se o P->fim for igual ao inicio
+                P->fim = fim; //P->fim recebe fim, pois significa que os setores são contínuos
+            }else{ //Se não são contínuos
+                Q = (ptnoSet *)malloc(sizeof(noSet)); //Aloca memória pro novo setor
+                Q->inicio = inicio; //Insere inicio
+                Q->fim = fim; //Insere fim
+                Q->prox = NULL; //Não tem próximo, pois está no final da lista
+                P->prox = Q; //P->prox aponta para o novo nó
             }
-        }else{            
-            if(!P){
-                if(fim + 1 == Q->inicio){
+        }else{ //Se existir Q           
+            if(!P){ //Se não existir P, significa que irá inserir no começo da lista
+                if(fim + 1 == Q->inicio){ //Se o fim + 1 for igual ao Q->inicio, 
                     Q->inicio = inicio;
                     (*setores) = Q;
                 }else{
@@ -170,14 +173,15 @@ void insereSetor(ptnoSet *setores, int inicio, int fim){
                 if(fim + 1 == Q->inicio){
                     Q->inicio = inicio;
                 }
-                if(P->fim + 1 == inicio){
-                    P->fim = fim;
-                    if(P->fim == Q->inicio){
+                if(P->fim + 1 == inicio){                    
+                    if(P->fim + 1 == Q->inicio){
                         Q->inicio = P->inicio;
                         if((*setores) == P){
                             (*setores) = Q;
                             free(P);
                         }
+                    }else{
+                        P->fim = fim;
                     }
                     return TRUE;
                 }else{
@@ -217,70 +221,110 @@ void liberaMemoria(memoria *Memo, int inicio, int fim){
 }
 /*Função para gravar arquivo*/
 int gravaArquivo(ptnoArq *arquivo, ptnoSet *Area, char *texto, char *nome, memoria *Memo){
-    int tamArquivo = tamanhoArquivo(texto);       
-    int caracteresInseridos = 0;
-    if(tamArquivo >= verificaAreaLivre(Area) * 3) return FALSE;
-    ptnoArq P = insereArquivo(&(*arquivo), texto, nome);
+    ptnoSet aux;
+    int tamArquivo = tamanhoArquivo(texto); //Retorna o número de caracteres do texto      
+    int caracteresInseridos = 0; //Variável que será usada para controlar quantos caracteres foram inseridos 
+    if(!verificaAreaLivre(Area, tamArquivo)) return FALSE; //Se o tamanho do arquivo for maior que a área livre, a função para
+    ptnoArq P = alocaArquivo(&(*arquivo), texto, nome);//Aloca na memória o arquivo, os setores serão inseridos depois
     int numeroSetores = 0;
-    if(tamArquivo % 3) numeroSetores = tamArquivo/3 + 1;
-    else numeroSetores = tamArquivo/3;
+    if(tamArquivo % 3) numeroSetores = tamArquivo/3 + 1;//Caso o tamanho do arquivo não seja divisível por 3, numeroSetores recebe o tamanho do arquivo dividido por 3 + 1
+    else numeroSetores = tamArquivo/3; //Senão ele recebe o tamanho do arquivo divido por 3
     while(numeroSetores){              
-        if(numeroSetores >= (*Area)->fim - (*Area)->inicio){      
-            insereSetor(&P->setores, (*Area)->inicio, (*Area)->fim);
-            preencheSetor((*Area)->inicio, (*Area)->fim, texto, Memo, tamArquivo, &caracteresInseridos);
-            numeroSetores = numeroSetores - (*Area)->fim - (*Area)->inicio - 1;
-            (*Area) = (*Area)->prox;
-        }else{
-            int setorFim = (*Area)->inicio + numeroSetores - 1;
-            insereSetor(&P->setores, (*Area)->inicio, setorFim);
-            preencheSetor((*Area)->inicio, setorFim, texto, Memo, tamArquivo, &caracteresInseridos);
-            (*Area)->inicio = setorFim + 1;
+        if(numeroSetores > (*Area)->fim - (*Area)->inicio){ //Se o número de setores for maior ou igual a quantidade de setores livres no primeiro nó da area livre     
+            alocaSetor(&P->setores, (*Area)->inicio, (*Area)->fim);//Ele aloca o setor usado no arquivo criado anteriormente
+            preencheSetor((*Area)->inicio, (*Area)->fim, texto, Memo, tamArquivo, &caracteresInseridos);//Preenche o setor na matriz da Memoria
+            numeroSetores = numeroSetores - ((*Area)->fim - (*Area)->inicio) - 1;//Retira do numeroSetores a quantidade de setores que foi inserida no primeiro nó. O -1 foi necessário, pois apenas subtraindo o inicio do fim, não contaria que o inicio foi usado também
+            aux = (*Area);//Aux guarda o endereço de Area
+            (*Area) = (*Area)->prox;//Como todo o nó foi utilizado, Area aponta para o próximo nó
+            free(aux);//Libera a memória do nó que foi utilizado
+        }else{//Caso o número de setores seja menor que a area livre do primeiro nó
+            int setorFim = (*Area)->inicio + numeroSetores - 1;//Variável que irá dizer qual o último setor que será usado nesse nó. O -1 é pra considerar o inicio que também será usado
+            alocaSetor(&P->setores, (*Area)->inicio, setorFim);//Aloca o setor no Arquivo criado anteriormente
+            preencheSetor((*Area)->inicio, setorFim, texto, Memo, tamArquivo, &caracteresInseridos);//Preenche a matriz memória com os caracteres do texto
+            (*Area)->inicio = setorFim + 1;//Altera o valor do inicio do nó pro setor fim + 1. Sem o +1 ele cairia no último setor utilizado e, nesse caso, queremos o que vem depois dele
             numeroSetores = 0;
         }
     }
-    mostraMemoria((*Memo));
     return TRUE;
 }
 
+//Função que desaloca os setores após excluir um arquivo e libera a memória 
 void desalocaSetores(ptnoArq arquivo, ptnoSet *Area, memoria *Memo){
-    ptnoSet P = arquivo->setores;
-    if(!P){
-        return TRUE;
+    ptnoSet aux;
+    ptnoSet P = arquivo->setores;//P = o endereço do primeiro nó de setores que o arquivo ocupa. Usei P ao invés do próprio arquivo->setores por motivo de legibilidade
+    if(!P){//Se não tiver nenhum setor, para por aqui
+        return;
     }
-    while(P){
-        insereSetor(Area,P->inicio,P->fim);
-        liberaMemoria(Memo, P->inicio, P->fim);
-        P = P->prox;
+    while(P){//Se tiver ...
+        alocaSetor(Area,P->inicio,P->fim);//Aloca a nova área livre
+        liberaMemoria(Memo, P->inicio, P->fim);//Libera a memória adicionando ' ' onde tinha caracteres
+        aux = P;//Aux recebe P
+        P = P->prox;//P recebe o próximo nó de setores ocupados pelo arquivo
+        free(aux);//Libera a memória que o setor ocupava 
     }
-    return TRUE;
+    return;
 }
 
+//Função que remove um arquivo
 int removeArquivo(ptnoArq *arquivo, char *nome, ptnoSet *Area, memoria *Memo){
-    if(!(*arquivo)){
+    if(!(*arquivo)){//Se não tiver nenhum arquivo, para por aqui.
         return FALSE;
     }
     ptnoArq P = NULL, Q = (*arquivo), aux;
-    while(Q && strcmp(nome, Q->nome) > 0){
+    while(Q && strcmp(nome, Q->nome) > 0){//Enquanto o nome dado for maior que Q->nome, Q continua percorrendo a lista
         P = Q;
         Q = Q->prox;
     }
-    if(!Q){
+    if(!Q){//Se Q terminar nulo, é pq não existe o arquivo
         return FALSE;
     }
     aux = Q;
     Q = Q->prox;
-    if(P){
+    if(P){//Se existir um P, significa que o arquivo não está na cabeça da lista, sendo assim, P->prox passa a apontar pro arquivo que está logo após o excluído
         P->prox = Q;
-    }else{
+    }else{//Senão, a cabeça da lista passa a ser o arquivo logo após o excluido
         (*arquivo) = Q;
     }
-    desalocaSetores(aux, Area, Memo);
-    free(aux);
+    desalocaSetores(aux, Area, Memo);//Chama a função que desaloca os setores e libera a memória
+    free(aux);//Libera a memória que o arquivo ocupava
     return TRUE;
 }
 
-int excluiArquivo(){
-    
+//Função que apresenta o arquivo solicitado
+int apresentaArquivo(ptnoArq arquivo, char *nome, memoria *Memo){
+    while(arquivo && strcmp(nome, arquivo->nome) > 0){//Enquanto existir arquivo e o nome passado for maior que arquivo->nome, a lista vai percorrendo
+        arquivo = arquivo->prox;
+    }
+    if(!arquivo){//Se arquivo terminar nulo, é pq o arquivo não existe
+        return FALSE;
+    }
+    else{   
+        int i, j; //Variáveis que controlam o laço de repetição
+        printf("Setores | Conteúdo\n");
+        printf("------------------\n");
+        while(arquivo->setores){ //Enquanto tiver setores 
+            printf("(%2d,%2d) | ", arquivo->setores->inicio, arquivo->setores->fim); //Printa o setor inicio e o fim
+            for(i = arquivo->setores->inicio; i <= arquivo->setores->fim; i++){ //Depois printa os caracteres dentro dos setores              
+                for(j = 0; j < TAM_GRANULO; j++){
+                    printf("%c", (*Memo)[i][j]);
+                }
+            }
+            printf("\n");
+            arquivo->setores = arquivo->setores->prox;//Vai para o próximo setor, se tiver, e repete a operação
+        }
+    }
+    return TRUE;
+}
+
+//Função que verifica se existe um arquivo com determinado nome
+int existeArquivo(ptnoArq Q, char *nome){
+    while(Q && (strcmp(nome, Q->nome) >= 0)){//Enquanto Q existir e o  nome dado for maior ou igual ao Q->nome
+        if(strcmp(nome, Q->nome) == 0){//Se o nome for igual, retorna false pra informar que não pode inserir o arquivo
+            return FALSE;
+        }
+        Q = Q->prox;//Senão, Q = Q->prox para percorrer a lista
+    }
+    return TRUE;//Caso não tenha encontrado um arquivo com o mesmo nome, retorna TRUE para poder inserir um arquivo
 }
 
 /*--------------------------*/
@@ -322,13 +366,17 @@ int main(void) {
         switch (com[0]) {
             case 'G':
                 scanf("%s %s", nome, texto);
-                printf("nome = %s\n", nome);
-                printf("texto = %s\n", texto);
-                teste = gravaArquivo(&Arq, &Area, texto, nome, &Memo);
-                if(!teste){
-                    puts("Deu ruim!");
+                if(existeArquivo(Arq, nome)){             
+                    printf("nome = %s\n", nome);
+                    printf("texto = %s\n", texto);
+                    teste = gravaArquivo(&Arq, &Area, texto, nome, &Memo);
+                    if(!teste){
+                        puts("\nNão foi possível gravar o arquivo");
+                    }else{
+                        puts("\nArquivo gravado com sucesso!");
+                    }
                 }else{
-                    puts("Deu bom!");
+                    puts ("\nJá existe um arquivo com o mesmo nome!");
                 }
                 /*
                  * Implementar as chamadas das funcoes pra GRAVAR arquivo
@@ -337,7 +385,12 @@ int main(void) {
             case 'D':
                 scanf("%s", nome);
                 printf("nome = %s\n", nome);
-                removeArquivo(&Arq, nome, &Area, &Memo);
+                teste = removeArquivo(&Arq, nome, &Area, &Memo);
+                if(teste){
+                    puts("\nArquivo removido com sucesso!");
+                }else{
+                    puts("\nO arquivo não pôde ser removido!");
+                }
                 break;
             case 'A':
                 scanf("%s", nome);
@@ -345,6 +398,10 @@ int main(void) {
                 /*
                  * Implementar as chamadas das funcoes pra APRESENTAR arquivo
                  */
+                teste = apresentaArquivo(Arq, nome, &Memo);
+                if(!teste){
+                    puts("\nArquivo não existe!");
+                }
                 break;
             case 'M':
                 mostraSetores(Area, "Area");
