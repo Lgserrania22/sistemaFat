@@ -1,7 +1,14 @@
-/*-------------------------------------------------
- * Simulador de FAT - File Allocation Table
- * Luiz Eduardo da Silva
- *-------------------------------------------------*/
+/*(*+-------------------------------------------------------------+
+ | UNIFAL – Universidade Federal de Alfenas. |
+ | BACHARELADO EM CIENCIA DA COMPUTACAO. |
+ | Trabalho..: SIMULACAO DE SISTEMA DE ARQUIVOS FAT |
+ | Disciplina: Estrutura de Dados I |
+ | Professor.: Luiz Eduardo da Silva |
+ | Aluno(s)..: Luis Gustavo da Souza Carvalho |
+ |             Pedro Barraza |
+ *             José Fernandes |
+ | Data......: 27/07/2017 |
+ +-------------------------------------------------------------+*)*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -148,7 +155,7 @@ void alocaSetor(ptnoSet *setores, int inicio, int fim){
             Q = Q->prox;
         }
         if(!Q){ //Se no final não existir Q, significa que vai ser inserido no final da lista
-            if(P->fim == inicio){ //Se o P->fim for igual ao inicio
+            if(P->fim + 1 == inicio){ //Se o P->fim for igual ao inicio
                 P->fim = fim; //P->fim recebe fim, pois significa que os setores são contínuos
             }else{ //Se não são contínuos
                 Q = (ptnoSet *)malloc(sizeof(noSet)); //Aloca memória pro novo setor
@@ -160,36 +167,33 @@ void alocaSetor(ptnoSet *setores, int inicio, int fim){
         }else{ //Se existir Q           
             if(!P){ //Se não existir P, significa que irá inserir no começo da lista
                 if(fim + 1 == Q->inicio){ //Se o fim + 1 for igual ao Q->inicio, 
-                    Q->inicio = inicio;
-                    (*setores) = Q;
-                }else{
-                    aux = (ptnoSet *)malloc(sizeof(noSet));
-                    aux->prox = Q;
-                    aux->inicio = inicio;
-                    aux->fim = fim;
-                    (*setores) = aux;
+                    Q->inicio = inicio; //Q->inicio recebe inicio, pois são contínuos
+                }else{ //Se fim + 1 não for igual ao Q->inicio
+                    aux = (ptnoSet *)malloc(sizeof(noSet)); //Aloca um novo setor
+                    aux->prox = Q; //O novo setor aponta pra Q
+                    aux->inicio = inicio; //Recebe inicio
+                    aux->fim = fim; //Recebe fim
+                    (*setores) = aux; //Novo setor passa a ser a cabeça da lista
                 }
-            }else{
-                if(fim + 1 == Q->inicio){
-                    Q->inicio = inicio;
+            }else{ //Caso exista P
+                if(fim + 1 == Q->inicio){ //Se o fim + 1 for igual ao Q->inicio, 
+                    Q->inicio = inicio; //Q->inicio recebe inicio, pois são contínuos
                 }
-                if(P->fim + 1 == inicio){                    
-                    if(P->fim + 1 == Q->inicio){
-                        Q->inicio = P->inicio;
-                        if((*setores) == P){
-                            (*setores) = Q;
-                            free(P);
-                        }
+                if(P->fim + 1 == inicio){ //Se P->fim + 1 for igual ao inicio, eles são contínuos                    
+                    if(P->fim + 1 == Q->inicio){ //Se P->fim + 1 for igual ao Q->inicio, significa que os dois ficaram contínuos com o novo setor livre
+                        P->fim = Q->fim; //Nesse caso, P->fim recebe Q->fim
+                        P->prox = Q->prox; //P->prox passa a apontar pro nó depois de Q
+                        free(Q); //Libera a memória de Q
                     }else{
-                        P->fim = fim;
+                        P->fim = fim; // Senão o fim de P passa a ser o fim dado
                     }
                     return TRUE;
-                }else{
-                    aux = (ptnoSet *)malloc(sizeof(noSet));
-                    P->prox = aux;
-                    aux->prox = Q;
-                    aux->inicio = inicio;
-                    aux->fim = fim;
+                }else{ // Caso P->fim + 1 não seja igual ao inicio, eles não são contínuos e o setor ficará entre P e Q 
+                    aux = (ptnoSet *)malloc(sizeof(noSet)); //Aloca memória
+                    P->prox = aux; //P->prox aponta para o novo setor
+                    aux->prox = Q;// aux->prox aponta pra Q
+                    aux->inicio = inicio; //Seta inicio
+                    aux->fim = fim; //Seta fim
                 }
             }
         }           
@@ -199,18 +203,20 @@ void alocaSetor(ptnoSet *setores, int inicio, int fim){
 /*------------------------------------*/
 /*Função para preencher os setores na memória*/
 void preencheSetor(int inicio, int fim, char *texto,memoria *Memo, int tamArquivo, int *caracteresInseridos){
-    int setorAtual = inicio;
-    while(setorAtual <= fim){
+    int setorAtual = inicio; //Setor atual recebe o inicio
+    while(setorAtual <= fim){ //Enquanto ele for menor ou igual ao fim
        int contador = 0;
-       while(contador < 3 && *caracteresInseridos < tamArquivo){
+       while(contador < 3 && *caracteresInseridos < tamArquivo){ //Insere 3 caracteres por setor
            (*Memo)[setorAtual][contador] = texto[(*caracteresInseridos)];
            contador++;
            (*caracteresInseridos)++;
        }
        setorAtual++;
+       //A variável caracteresInseridos é passada por referência porque ela irá controlar todos os caracteres inseridos la na função gravarArquivo
     }
 }
 
+//Função que substitui os caracteres na memória por ' '
 void liberaMemoria(memoria *Memo, int inicio, int fim){
     int i;
     for(i = inicio; i <= fim; i++){
@@ -292,25 +298,27 @@ int removeArquivo(ptnoArq *arquivo, char *nome, ptnoSet *Area, memoria *Memo){
 
 //Função que apresenta o arquivo solicitado
 int apresentaArquivo(ptnoArq arquivo, char *nome, memoria *Memo){
+    ptnoSet aux;
     while(arquivo && strcmp(nome, arquivo->nome) > 0){//Enquanto existir arquivo e o nome passado for maior que arquivo->nome, a lista vai percorrendo
         arquivo = arquivo->prox;
     }
-    if(!arquivo){//Se arquivo terminar nulo, é pq o arquivo não existe
+    if(!arquivo || strcmp(nome,arquivo->nome) != 0){//Se arquivo terminar nulo, é pq o arquivo não existe
         return FALSE;
     }
-    else{   
+    else{
+        aux = arquivo->setores; //Aux recebe a cabeça da lista de setores que o arquivo ocupa
         int i, j; //Variáveis que controlam o laço de repetição
         printf("Setores | Conteúdo\n");
         printf("------------------\n");
-        while(arquivo->setores){ //Enquanto tiver setores 
-            printf("(%2d,%2d) | ", arquivo->setores->inicio, arquivo->setores->fim); //Printa o setor inicio e o fim
-            for(i = arquivo->setores->inicio; i <= arquivo->setores->fim; i++){ //Depois printa os caracteres dentro dos setores              
+        while(aux){ //Enquanto tiver setores 
+            printf("(%2d,%2d) | ", aux->inicio, aux->fim); //Printa o setor inicio e o fim
+            for(i = aux->inicio; i <= aux->fim; i++){ //Depois printa os caracteres dentro dos setores              
                 for(j = 0; j < TAM_GRANULO; j++){
                     printf("%c", (*Memo)[i][j]);
                 }
             }
             printf("\n");
-            arquivo->setores = arquivo->setores->prox;//Vai para o próximo setor, se tiver, e repete a operação
+            aux = aux->prox;//Vai para o próximo setor, se tiver, e repete a operação
         }
     }
     return TRUE;
@@ -366,12 +374,12 @@ int main(void) {
         switch (com[0]) {
             case 'G':
                 scanf("%s %s", nome, texto);
-                if(existeArquivo(Arq, nome)){             
+                if(existeArquivo(Arq, nome)){ //Verifica se o arquivo já existe, caso não, ele começa tentar gravar            
                     printf("nome = %s\n", nome);
                     printf("texto = %s\n", texto);
                     teste = gravaArquivo(&Arq, &Area, texto, nome, &Memo);
                     if(!teste){
-                        puts("\nNão foi possível gravar o arquivo");
+                        puts("\nMemória cheia!");
                     }else{
                         puts("\nArquivo gravado com sucesso!");
                     }
